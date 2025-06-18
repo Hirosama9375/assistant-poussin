@@ -13,7 +13,7 @@ if not os.path.exists(HISTORY_FILE):
         json.dump([], f)
 
 POUSSIN_STATE = {
-    "mode": "IA",   # IA ou ULTRA_HUMAIN
+    "mode": "IA",
     "current_module": None
 }
 
@@ -73,7 +73,7 @@ HTML = '''
       <option value="mixtral:7b">Mixtral 7B</option>
     </select><br>
     <label>Créativité :</label><br>
-    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.7"><br>
+    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.5"><br>
     <label>Couleur Bulle User :</label><br>
     <input type="color" id="bubbleColor" value="#d1f3d1" onchange="changeBubbleColor()"><br>
     <button onclick="toggleDark()">🌙 / ☀️</button>
@@ -184,27 +184,36 @@ def index():
 def ask():
     data = request.json
     user_input = data['message']
-    temp = data.get('temp', 0.7)
+    temp = float(data.get('temp', 0.5))
     model = data.get('model', 'llama3:8b')
 
     if POUSSIN_STATE["mode"] == "IA":
-        system = "Tu es Poussin GPT 🐣, assistant clair et structuré. Réponds poliment, sans fautes, de façon logique."
+        system = "Réponds CLAIREMENT et BRIÈVEMENT 🐣"
     else:
-        system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️ : parle comme un humain normal, phrases imparfaites, un peu de fautes ok, humour, spontané, imprévisible, jamais robotique."
+        system = "Parle comme un humain, réponse courte 🕵️‍♂️"
 
-    messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user_input}
+    ]
+
+    response = ollama.chat(
+        model=model,
+        messages=messages,
+        options={
+            "temperature": temp,
+            "top_p": 0.7,
+            "num_predict": 64
+        }
+    )
+
     reply = response['message']['content']
-
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
 
 @app.route('/toggle_mode')
 def toggle_mode():
-    if POUSSIN_STATE["mode"] == "IA":
-        POUSSIN_STATE["mode"] = "ULTRA HUMAIN"
-    else:
-        POUSSIN_STATE["mode"] = "IA"
+    POUSSIN_STATE["mode"] = "ULTRA HUMAIN" if POUSSIN_STATE["mode"] == "IA" else "IA"
     return jsonify({"mode": POUSSIN_STATE["mode"]})
 
 @app.route('/export_txt')
@@ -224,7 +233,7 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    reply = f"[Module {mod}] exécuté ! (exemple de réponse)"
+    reply = f"[Module {mod}] exécuté ✅ (réponse simplifiée)"
     return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
@@ -235,6 +244,5 @@ def save_to_history(user, assistant):
         json.dump(history, f)
 
 if __name__ == "__main__":
-    # Utilise le port de Render OU 5000 local
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
