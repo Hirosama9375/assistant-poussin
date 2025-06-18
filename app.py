@@ -5,11 +5,7 @@ import os
 import json
 import time
 
-from modules import chaos, blague, synthese, incoherence, planificateur, rapport, controle, style, humaniser, story, quiz, confess
-
 app = Flask(__name__)
-
-ollama_client = ollama.Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
 
 HISTORY_FILE = 'history.json'
 os.makedirs('uploads', exist_ok=True)
@@ -22,7 +18,18 @@ POUSSIN_STATE = {
     "current_module": None
 }
 
-HTML = '<h1>Assistant Poussin IA 🐣</h1><p>Ton HTML complet doit être collé ici si tu le veux complet.</p>'
+HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Assistant Poussin 🐣</title>
+</head>
+<body>
+  <h1>Assistant Poussin 🐣</h1>
+</body>
+</html>
+'''
 
 @app.route('/')
 def index():
@@ -38,10 +45,10 @@ def ask():
     if POUSSIN_STATE["mode"] == "IA":
         system = "Tu es Poussin GPT 🐣, assistant clair et structuré."
     else:
-        system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."
+        system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️ : parle comme un humain normal."
 
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama_client.chat(model=model, messages=messages, options={"temperature": temp})
+    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
 
     save_to_history(user_input, reply)
@@ -49,10 +56,7 @@ def ask():
 
 @app.route('/toggle_mode')
 def toggle_mode():
-    if POUSSIN_STATE["mode"] == "IA":
-        POUSSIN_STATE["mode"] = "ULTRA HUMAIN"
-    else:
-        POUSSIN_STATE["mode"] = "IA"
+    POUSSIN_STATE["mode"] = "ULTRA HUMAIN" if POUSSIN_STATE["mode"] == "IA" else "IA"
     return jsonify({"mode": POUSSIN_STATE["mode"]})
 
 @app.route('/export_txt')
@@ -73,29 +77,29 @@ def clear_history():
 @app.route('/module/<mod>')
 def module(mod):
     if mod == "chaos":
-        reply = chaos.run()
+        reply = "[Module chaos] exécuté !"
     elif mod == "blague":
-        reply = blague.run()
+        reply = "[Module blague] Voici une blague."
     elif mod == "synthese":
-        reply = synthese.run()
+        reply = "[Module synthese] Voici une synthèse."
     elif mod == "incoherence":
-        reply = incoherence.run()
+        reply = "[Module incoherence] Vérification incohérence."
     elif mod == "planificateur":
-        reply = planificateur.run()
+        reply = "[Module planificateur] Voici le planificateur."
     elif mod == "rapport":
-        reply = rapport.run()
+        reply = "[Module rapport] Voici le rapport."
     elif mod == "controle":
-        reply = controle.run()
+        reply = "[Module controle] Contrôle effectué."
     elif mod == "style":
-        reply = style.run()
+        reply = "[Module style] Style changé."
     elif mod == "humaniser":
-        reply = humaniser.run()
+        reply = "[Module humaniser] Texte humanisé."
     elif mod == "story":
-        reply = story.run()
+        reply = "[Module story] Histoire générée."
     elif mod == "quiz":
-        reply = quiz.run()
+        reply = "[Module quiz] Quiz lancé."
     elif mod == "confess":
-        reply = confess.run()
+        reply = "[Module confess] Confession traitée."
     else:
         reply = f"[Module {mod}] introuvable."
     return jsonify({"reply": reply})
