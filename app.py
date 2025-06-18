@@ -176,7 +176,7 @@ def ask():
     user_input = data['message']
     temp = float(data.get('temp', 0.3))
     model = data.get('model', 'llama3:8b')
-    system = "Réponse courte." if POUSSIN_STATE["mode"] == "IA" else "Réponse courte, style humain."
+    system = "Réponds court et clair." if POUSSIN_STATE["mode"] == "IA" else "Réponse courte style humain."
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
     response = ollama.chat(model=model, messages=messages, options={"temperature": temp, "top_p": 0.7, "num_predict": 16})
     reply = response['message']['content']
@@ -205,7 +205,8 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    return jsonify({"reply": f"[Module {mod}] exécuté ✅"})
+    reply = f"[Module {mod}] exécuté ✅"
+    return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
