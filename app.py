@@ -9,6 +9,8 @@ from modules import chaos, blague, synthese, incoherence, planificateur, rapport
 
 app = Flask(__name__)
 
+ollama_client = ollama.Client(host=os.getenv("OLLAMA_HOST", "http://localhost:11434"))
+
 HISTORY_FILE = 'history.json'
 os.makedirs('uploads', exist_ok=True)
 if not os.path.exists(HISTORY_FILE):
@@ -16,11 +18,11 @@ if not os.path.exists(HISTORY_FILE):
         json.dump([], f)
 
 POUSSIN_STATE = {
-    "mode": "IA",   # IA ou ULTRA_HUMAIN
+    "mode": "IA",
     "current_module": None
 }
 
-HTML = '''TON_HTML_REEL_ICI'''
+HTML = '<h1>Assistant Poussin IA 🐣</h1><p>Ton HTML complet doit être collé ici si tu le veux complet.</p>'
 
 @app.route('/')
 def index():
@@ -39,7 +41,7 @@ def ask():
         system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."
 
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
+    response = ollama_client.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
 
     save_to_history(user_input, reply)
