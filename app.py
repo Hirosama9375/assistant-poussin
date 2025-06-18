@@ -5,11 +5,9 @@ import os
 import json
 import time
 
-from modules import synthese, incoherence, planificateur, rapport, controle, style, humaniser, joke, story, quiz, chaos, confess
+from modules import chaos, blague, synthese, incoherence, planificateur, rapport, controle, style, humaniser, story, quiz, confess
 
 app = Flask(__name__)
-
-ollama_client = ollama.Client(host="https://TON-NGROK-URL.ngrok.io")
 
 HISTORY_FILE = 'history.json'
 os.makedirs('uploads', exist_ok=True)
@@ -18,11 +16,11 @@ if not os.path.exists(HISTORY_FILE):
         json.dump([], f)
 
 POUSSIN_STATE = {
-    "mode": "IA",
+    "mode": "IA",   # IA ou ULTRA_HUMAIN
     "current_module": None
 }
 
-HTML = '<h1>Poussin IA 🐣 - Railway Version</h1><p>Interface HTML à remplacer ici.</p>'
+HTML = '''TON_HTML_REEL_ICI'''
 
 @app.route('/')
 def index():
@@ -41,7 +39,7 @@ def ask():
         system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."
 
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama_client.chat(model=model, messages=messages, options={"temperature": temp})
+    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
 
     save_to_history(user_input, reply)
@@ -54,36 +52,6 @@ def toggle_mode():
     else:
         POUSSIN_STATE["mode"] = "IA"
     return jsonify({"mode": POUSSIN_STATE["mode"]})
-
-@app.route('/module/<mod>')
-def module(mod):
-    if mod == "synthese":
-        reply = synthese.run()
-    elif mod == "incoherence":
-        reply = incoherence.run()
-    elif mod == "planificateur":
-        reply = planificateur.run()
-    elif mod == "rapport":
-        reply = rapport.run()
-    elif mod == "controle":
-        reply = controle.run()
-    elif mod == "style":
-        reply = style.run()
-    elif mod == "humaniser":
-        reply = humaniser.run()
-    elif mod == "joke":
-        reply = joke.run()
-    elif mod == "story":
-        reply = story.run()
-    elif mod == "quiz":
-        reply = quiz.run()
-    elif mod == "chaos":
-        reply = chaos.run()
-    elif mod == "confess":
-        reply = confess.run()
-    else:
-        reply = "Module inconnu."
-    return jsonify({"reply": reply})
 
 @app.route('/export_txt')
 def export_txt():
@@ -99,6 +67,36 @@ def clear_history():
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
     return '', 204
+
+@app.route('/module/<mod>')
+def module(mod):
+    if mod == "chaos":
+        reply = chaos.run()
+    elif mod == "blague":
+        reply = blague.run()
+    elif mod == "synthese":
+        reply = synthese.run()
+    elif mod == "incoherence":
+        reply = incoherence.run()
+    elif mod == "planificateur":
+        reply = planificateur.run()
+    elif mod == "rapport":
+        reply = rapport.run()
+    elif mod == "controle":
+        reply = controle.run()
+    elif mod == "style":
+        reply = style.run()
+    elif mod == "humaniser":
+        reply = humaniser.run()
+    elif mod == "story":
+        reply = story.run()
+    elif mod == "quiz":
+        reply = quiz.run()
+    elif mod == "confess":
+        reply = confess.run()
+    else:
+        reply = f"[Module {mod}] introuvable."
+    return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
