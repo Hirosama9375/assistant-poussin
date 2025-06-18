@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template_string, request, jsonify, send_file
 import ollama
 import os
@@ -12,10 +13,7 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
 
-POUSSIN_STATE = {
-    "mode": "IA",
-    "current_module": None
-}
+POUSSIN_STATE = {"mode": "IA", "current_module": None}
 
 HTML = '''
 <!DOCTYPE html>
@@ -73,7 +71,7 @@ HTML = '''
       <option value="mixtral:7b">Mixtral 7B</option>
     </select><br>
     <label>Créativité :</label><br>
-    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.5"><br>
+    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.3"><br>
     <label>Couleur Bulle User :</label><br>
     <input type="color" id="bubbleColor" value="#d1f3d1" onchange="changeBubbleColor()"><br>
     <button onclick="toggleDark()">🌙 / ☀️</button>
@@ -127,7 +125,6 @@ HTML = '''
       typing(false);
       addMessage('assistant', data.reply);
     }
-
     function addMessage(role, text) {
       const div = document.createElement('div');
       div.className = 'message ' + role;
@@ -135,25 +132,20 @@ HTML = '''
       document.getElementById('messages').appendChild(div);
       document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
     }
-
     function typing(status) {
       document.getElementById('typing').innerText = status ? "Poussin pond un œuf... 🐣⏳" : "";
     }
-
     function toggleDark() {
       document.body.classList.toggle('dark');
     }
-
     function changeBubbleColor() {
       document.body.style.setProperty('--user-bubble', document.getElementById('bubbleColor').value);
     }
-
     async function toggleMode() {
       const res = await fetch('/toggle_mode');
       const data = await res.json();
       document.getElementById('modeLabel').innerText = data.mode;
     }
-
     async function callModule(mod) {
       addMessage('user', `[Module ${mod}]`);
       typing(true);
@@ -162,11 +154,9 @@ HTML = '''
       typing(false);
       addMessage('assistant', data.reply);
     }
-
     async function exportTXT() {
       window.open('/export_txt');
     }
-
     async function clearHistory() {
       await fetch('/clear_history');
       document.getElementById('messages').innerHTML = '';
@@ -184,29 +174,11 @@ def index():
 def ask():
     data = request.json
     user_input = data['message']
-    temp = float(data.get('temp', 0.5))
+    temp = float(data.get('temp', 0.3))
     model = data.get('model', 'llama3:8b')
-
-    if POUSSIN_STATE["mode"] == "IA":
-        system = "Réponds CLAIREMENT et BRIÈVEMENT 🐣"
-    else:
-        system = "Parle comme un humain, réponse courte 🕵️‍♂️"
-
-    messages = [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user_input}
-    ]
-
-    response = ollama.chat(
-        model=model,
-        messages=messages,
-        options={
-            "temperature": temp,
-            "top_p": 0.7,
-            "num_predict": 64
-        }
-    )
-
+    system = "Réponse courte." if POUSSIN_STATE["mode"] == "IA" else "Réponse courte, style humain."
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
+    response = ollama.chat(model=model, messages=messages, options={"temperature": temp, "top_p": 0.7, "num_predict": 16})
     reply = response['message']['content']
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
@@ -233,8 +205,7 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    reply = f"[Module {mod}] exécuté ✅ (réponse simplifiée)"
-    return jsonify({"reply": reply})
+    return jsonify({"reply": f"[Module {mod}] exécuté ✅"})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
