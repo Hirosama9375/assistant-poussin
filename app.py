@@ -5,7 +5,11 @@ import os
 import json
 import time
 
+from modules import synthese, incoherence, planificateur, rapport, controle, style, humaniser, joke, story, quiz, chaos, confess
+
 app = Flask(__name__)
+
+ollama_client = ollama.Client(host="https://TON-NGROK-URL.ngrok.io")
 
 HISTORY_FILE = 'history.json'
 os.makedirs('uploads', exist_ok=True)
@@ -13,158 +17,12 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
 
-POUSSIN_STATE = {"mode": "IA", "current_module": None}
+POUSSIN_STATE = {
+    "mode": "IA",
+    "current_module": None
+}
 
-HTML = '''
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <title>Assistant Poussin 🐣</title>
-  <style>
-    body { margin:0; display:flex; height:100vh; font-family: Arial, sans-serif; transition: background 0.3s; }
-    body.dark { background:#222; color:white; }
-    .sidebar {
-      width:260px; background:#f9f9f9; border-right:1px solid #ddd;
-      padding:20px; text-align:center; overflow-y:auto;
-    }
-    body.dark .sidebar { background:#333; color:white; }
-    .sidebar img { width:80px; height:80px; border-radius:50%; }
-    .sidebar button {
-      width:100%; margin:5px 0; padding:10px;
-      border:none; border-radius:8px; background:#4CAF50;
-      color:white; cursor:pointer; font-weight:bold;
-    }
-    .sidebar select, .sidebar input[type=range], .sidebar input[type=color] {
-      width:90%; margin:8px 0;
-    }
-    .chat-container { flex:1; display:flex; flex-direction:column; }
-    .messages { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; }
-    .message {
-      margin:10px 0; padding:12px 18px; border-radius:18px; max-width:70%;
-      word-wrap:break-word; font-size:15px;
-    }
-    .user { background: var(--user-bubble, #d1f3d1); align-self:flex-end; }
-    .assistant { background: #f0f0f0; align-self:flex-start; }
-    body.dark .assistant { background:#444; color:white; }
-    .input-area {
-      display:flex; border-top:1px solid #ddd; padding:10px; background:#fafafa;
-    }
-    body.dark .input-area { background:#333; }
-    .input-area input {
-      flex:1; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:20px;
-    }
-    .input-area button {
-      margin-left:10px; padding:10px 20px; border:none; background:#4CAF50; color:white;
-      border-radius:20px; cursor:pointer; font-weight:bold;
-    }
-    #typing { padding:5px; font-style:italic; }
-  </style>
-</head>
-<body>
-  <div class="sidebar">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Emoji_u1f614.svg/1024px-Emoji_u1f614.svg.png" alt="Poussin">
-    <h3>Assistant Poussin 🐣</h3>
-    <label>Modèle :</label><br>
-    <select id="model">
-      <option value="llama3:8b">Llama3 8B</option>
-      <option value="mixtral:7b">Mixtral 7B</option>
-    </select><br>
-    <label>Créativité :</label><br>
-    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.3"><br>
-    <label>Couleur Bulle User :</label><br>
-    <input type="color" id="bubbleColor" value="#d1f3d1" onchange="changeBubbleColor()"><br>
-    <button onclick="toggleDark()">🌙 / ☀️</button>
-    <hr>
-    <button onclick="toggleMode()">Mode : <span id="modeLabel">IA</span></button>
-    <hr>
-    <button onclick="callModule('synthese')">Synthèse 📚</button>
-    <button onclick="callModule('incoherence')">Incohérence 🧐</button>
-    <button onclick="callModule('planificateur')">Planificateur 📅</button>
-    <button onclick="callModule('rapport')">Rapport 📈</button>
-    <button onclick="callModule('controle')">Contrôle 🔒</button>
-    <button onclick="callModule('style')">Changer Style 🎭</button>
-    <button onclick="callModule('humaniser')">Humaniser 🕵️‍♂️</button>
-    <hr>
-    <button onclick="callModule('joke')">Blague 😂</button>
-    <button onclick="callModule('story')">Histoire 📚</button>
-    <button onclick="callModule('quiz')">Quiz 🧠</button>
-    <button onclick="callModule('chaos')">Chaos 🌀</button>
-    <button onclick="callModule('confess')">Confession 😳</button>
-    <hr>
-    <button onclick="exportTXT()">Exporter TXT</button>
-    <button onclick="clearHistory()">🗑️ Effacer Chat</button>
-  </div>
-
-  <div class="chat-container">
-    <div class="messages" id="messages"></div>
-    <div id="typing"></div>
-    <div class="input-area">
-      <input id="msg" placeholder="Parle à Poussin...">
-      <button onclick="sendText()">Envoyer</button>
-    </div>
-  </div>
-
-  <script>
-    async function sendText() {
-      const msg = document.getElementById('msg').value.trim();
-      if (!msg) return;
-      addMessage('user', msg);
-      document.getElementById('msg').value = '';
-      typing(true);
-      const res = await fetch('/ask', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          message: msg,
-          temp: parseFloat(document.getElementById('temp').value),
-          model: document.getElementById('model').value
-        })
-      });
-      const data = await res.json();
-      typing(false);
-      addMessage('assistant', data.reply);
-    }
-    function addMessage(role, text) {
-      const div = document.createElement('div');
-      div.className = 'message ' + role;
-      div.innerText = text;
-      document.getElementById('messages').appendChild(div);
-      document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    }
-    function typing(status) {
-      document.getElementById('typing').innerText = status ? "Poussin pond un œuf... 🐣⏳" : "";
-    }
-    function toggleDark() {
-      document.body.classList.toggle('dark');
-    }
-    function changeBubbleColor() {
-      document.body.style.setProperty('--user-bubble', document.getElementById('bubbleColor').value);
-    }
-    async function toggleMode() {
-      const res = await fetch('/toggle_mode');
-      const data = await res.json();
-      document.getElementById('modeLabel').innerText = data.mode;
-    }
-    async function callModule(mod) {
-      addMessage('user', `[Module ${mod}]`);
-      typing(true);
-      const res = await fetch('/module/' + mod);
-      const data = await res.json();
-      typing(false);
-      addMessage('assistant', data.reply);
-    }
-    async function exportTXT() {
-      window.open('/export_txt');
-    }
-    async function clearHistory() {
-      await fetch('/clear_history');
-      document.getElementById('messages').innerHTML = '';
-    }
-  </script>
-</body>
-</html>
-'''
+HTML = '<h1>Poussin IA 🐣 - Railway Version</h1><p>Interface HTML à remplacer ici.</p>'
 
 @app.route('/')
 def index():
@@ -174,19 +32,58 @@ def index():
 def ask():
     data = request.json
     user_input = data['message']
-    temp = float(data.get('temp', 0.3))
+    temp = data.get('temp', 0.7)
     model = data.get('model', 'llama3:8b')
-    system = "Réponds court et clair." if POUSSIN_STATE["mode"] == "IA" else "Réponse courte style humain."
+
+    if POUSSIN_STATE["mode"] == "IA":
+        system = "Tu es Poussin GPT 🐣, assistant clair et structuré."
+    else:
+        system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."
+
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama.chat(model=model, messages=messages, options={"temperature": temp, "top_p": 0.7, "num_predict": 16})
+    response = ollama_client.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
+
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
 
 @app.route('/toggle_mode')
 def toggle_mode():
-    POUSSIN_STATE["mode"] = "ULTRA HUMAIN" if POUSSIN_STATE["mode"] == "IA" else "IA"
+    if POUSSIN_STATE["mode"] == "IA":
+        POUSSIN_STATE["mode"] = "ULTRA HUMAIN"
+    else:
+        POUSSIN_STATE["mode"] = "IA"
     return jsonify({"mode": POUSSIN_STATE["mode"]})
+
+@app.route('/module/<mod>')
+def module(mod):
+    if mod == "synthese":
+        reply = synthese.run()
+    elif mod == "incoherence":
+        reply = incoherence.run()
+    elif mod == "planificateur":
+        reply = planificateur.run()
+    elif mod == "rapport":
+        reply = rapport.run()
+    elif mod == "controle":
+        reply = controle.run()
+    elif mod == "style":
+        reply = style.run()
+    elif mod == "humaniser":
+        reply = humaniser.run()
+    elif mod == "joke":
+        reply = joke.run()
+    elif mod == "story":
+        reply = story.run()
+    elif mod == "quiz":
+        reply = quiz.run()
+    elif mod == "chaos":
+        reply = chaos.run()
+    elif mod == "confess":
+        reply = confess.run()
+    else:
+        reply = "Module inconnu."
+    return jsonify({"reply": reply})
 
 @app.route('/export_txt')
 def export_txt():
@@ -202,11 +99,6 @@ def clear_history():
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
     return '', 204
-
-@app.route('/module/<mod>')
-def module(mod):
-    reply = f"[Module {mod}] exécuté ✅"
-    return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
