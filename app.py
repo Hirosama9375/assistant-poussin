@@ -15,11 +15,16 @@ if not os.path.exists(HISTORY_FILE):
 
 POUSSIN_STATE = {"mode": "IA", "current_module": None}
 
-HTML = '''<!DOCTYPE html>
+# Client Ollama avec host dynamique
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+client = ollama.Client(host=OLLAMA_HOST)
+
+HTML = '''
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Assistant Poussin 🐣</title>
+  <title>Assistant Poussin 🐣 Railway ✅</title>
   <style>
     body { margin:0; display:flex; height:100vh; font-family: Arial, sans-serif; transition: background 0.3s; }
     body.dark { background:#222; color:white; }
@@ -103,13 +108,7 @@ HTML = '''<!DOCTYPE html>
       typing(false);
       addMessage('assistant', data.reply);
     }
-    function addMessage(role, text) {
-      const div = document.createElement('div');
-      div.className = 'message ' + role;
-      div.innerText = text;
-      document.getElementById('messages').appendChild(div);
-      document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-    }
+    function addMessage(role, text) { const div = document.createElement('div'); div.className = 'message ' + role; div.innerText = text; document.getElementById('messages').appendChild(div); document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight; }
     function typing(status) { document.getElementById('typing').innerText = status ? "Poussin pond un œuf... 🐣⏳" : ""; }
     function toggleDark() { document.body.classList.toggle('dark'); }
     function changeBubbleColor() { document.body.style.setProperty('--user-bubble', document.getElementById('bubbleColor').value); }
@@ -134,12 +133,7 @@ def ask():
     model = data.get('model', 'llama3:8b')
     system = "Poussin GPT 🐣" if POUSSIN_STATE["mode"] == "IA" else "Poussin ULTRA HUMAIN 🕵️‍♂️"
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama.chat(
-        model=model,
-        messages=messages,
-        options={"temperature": temp},
-        host=os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-    )
+    response = client.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
@@ -166,7 +160,7 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    return jsonify({"reply": f"[Module {mod}] exécuté avec OLLAMA_HOST 👍"})
+    return jsonify({"reply": f"[Module {mod}] exécuté avec Client(host) 👍"})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
