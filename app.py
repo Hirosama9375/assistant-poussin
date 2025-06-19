@@ -13,9 +13,13 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
 
-POUSSIN_STATE = {"mode": "IA", "current_module": None}
+POUSSIN_STATE = {
+    "mode": "IA",
+    "current_module": None
+}
 
-HTML = "<h1>Assistant Poussin 🐣</h1><p>(HTML complet à replacer)</p>"
+with open("interface.html") as f:
+    HTML = f.read()
 
 @app.route('/')
 def index():
@@ -28,17 +32,15 @@ def ask():
     temp = data.get('temp', 0.7)
     model = data.get('model', 'llama3:8b')
 
-    response = ollama.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": "Tu es Poussin GPT 🐣" if POUSSIN_STATE["mode"] == "IA" else "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️"},
-            {"role": "user", "content": user_input}
-        ],
-        options={"temperature": temp},
-        base_url=os.getenv("OLLAMA_URL", "http://localhost:11434")
-    )
+    if POUSSIN_STATE["mode"] == "IA":
+        system = "Tu es Poussin GPT 🐣, assistant clair et structuré."
+    else:
+        system = "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."
 
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
+    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
     reply = response['message']['content']
+
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
 
@@ -64,21 +66,21 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    modules = {
-        "synthese": "Synthèse 📚 prête",
-        "incoherence": "Vérification incohérence 🧐",
-        "planificateur": "Planificateur 📅 prêt",
-        "rapport": "Rapport 📈 généré",
-        "controle": "Contrôle 🔒 effectué",
-        "style": "Style 🎭 changé",
+    replies = {
+        "synthese": "Voici une synthèse 📚",
+        "incoherence": "Vérifions les incohérences 🧐",
+        "planificateur": "Planificateur activé 📅",
+        "rapport": "Voici le rapport 📈",
+        "controle": "Contrôle effectué 🔒",
+        "style": "Style changé 🎭",
         "humaniser": "Réponse humanisée 🕵️‍♂️",
-        "joke": "Blague 😂 du poussin !",
-        "story": "Histoire 📚 du poussin !",
-        "quiz": "Quiz 🧠 pour toi !",
-        "chaos": "Chaos 🌀 activé !",
-        "confess": "Confession 😳 révélée !"
+        "joke": "Voici une blague 😂",
+        "story": "Voici une histoire 📚",
+        "quiz": "Quiz lancé 🧠",
+        "chaos": "Mode chaos activé 🌀",
+        "confess": "Confession acceptée 😳"
     }
-    reply = modules.get(mod, f"[Module {mod}] exécuté !")
+    reply = replies.get(mod, f"[Module {mod}] exécuté !")
     return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
