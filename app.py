@@ -13,13 +13,9 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
 
-POUSSIN_STATE = {
-    "mode": "IA",
-    "current_module": None
-}
+POUSSIN_STATE = {"mode": "IA", "current_module": None}
 
-HTML = """
-<!DOCTYPE html>
+HTML = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
@@ -27,40 +23,21 @@ HTML = """
   <style>
     body { margin:0; display:flex; height:100vh; font-family: Arial, sans-serif; transition: background 0.3s; }
     body.dark { background:#222; color:white; }
-    .sidebar {
-      width:260px; background:#f9f9f9; border-right:1px solid #ddd;
-      padding:20px; text-align:center; overflow-y:auto;
-    }
+    .sidebar { width:260px; background:#f9f9f9; border-right:1px solid #ddd; padding:20px; text-align:center; overflow-y:auto; }
     body.dark .sidebar { background:#333; color:white; }
     .sidebar img { width:80px; height:80px; border-radius:50%; }
-    .sidebar button {
-      width:100%; margin:5px 0; padding:10px;
-      border:none; border-radius:8px; background:#4CAF50;
-      color:white; cursor:pointer; font-weight:bold;
-    }
-    .sidebar select, .sidebar input[type=range], .sidebar input[type=color] {
-      width:90%; margin:8px 0;
-    }
+    .sidebar button { width:100%; margin:5px 0; padding:10px; border:none; border-radius:8px; background:#4CAF50; color:white; cursor:pointer; font-weight:bold; }
+    .sidebar select, .sidebar input[type=range], .sidebar input[type=color] { width:90%; margin:8px 0; }
     .chat-container { flex:1; display:flex; flex-direction:column; }
     .messages { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; }
-    .message {
-      margin:10px 0; padding:12px 18px; border-radius:18px; max-width:70%;
-      word-wrap:break-word; font-size:15px;
-    }
+    .message { margin:10px 0; padding:12px 18px; border-radius:18px; max-width:70%; word-wrap:break-word; font-size:15px; }
     .user { background: var(--user-bubble, #d1f3d1); align-self:flex-end; }
     .assistant { background: #f0f0f0; align-self:flex-start; }
     body.dark .assistant { background:#444; color:white; }
-    .input-area {
-      display:flex; border-top:1px solid #ddd; padding:10px; background:#fafafa;
-    }
+    .input-area { display:flex; border-top:1px solid #ddd; padding:10px; background:#fafafa; }
     body.dark .input-area { background:#333; }
-    .input-area input {
-      flex:1; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:20px;
-    }
-    .input-area button {
-      margin-left:10px; padding:10px 20px; border:none; background:#4CAF50; color:white;
-      border-radius:20px; cursor:pointer; font-weight:bold;
-    }
+    .input-area input { flex:1; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:20px; }
+    .input-area button { margin-left:10px; padding:10px 20px; border:none; background:#4CAF50; color:white; border-radius:20px; cursor:pointer; font-weight:bold; }
     #typing { padding:5px; font-style:italic; }
   </style>
 </head>
@@ -143,7 +120,7 @@ HTML = """
   </script>
 </body>
 </html>
-"""
+'''
 
 @app.route('/')
 def index():
@@ -157,7 +134,12 @@ def ask():
     model = data.get('model', 'llama3:8b')
     system = "Poussin GPT 🐣" if POUSSIN_STATE["mode"] == "IA" else "Poussin ULTRA HUMAIN 🕵️‍♂️"
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user_input}]
-    response = ollama.chat(model=model, messages=messages, options={"temperature": temp})
+    response = ollama.chat(
+        model=model,
+        messages=messages,
+        options={"temperature": temp},
+        host=os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    )
     reply = response['message']['content']
     save_to_history(user_input, reply)
     return jsonify({"reply": reply})
@@ -184,7 +166,7 @@ def clear_history():
 
 @app.route('/module/<mod>')
 def module(mod):
-    return jsonify({"reply": f"[Module {mod}] exécuté ! (Railway complet)"})
+    return jsonify({"reply": f"[Module {mod}] exécuté avec OLLAMA_HOST 👍"})
 
 def save_to_history(user, assistant):
     with open(HISTORY_FILE, 'r') as f:
