@@ -13,12 +13,103 @@ if not os.path.exists(HISTORY_FILE):
     with open(HISTORY_FILE, 'w') as f:
         json.dump([], f)
 
-POUSSIN_STATE = {
-    "mode": "IA",
-    "current_module": None
-}
+POUSSIN_STATE = {"mode": "IA", "current_module": None}
+HTML = '''
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Assistant Poussin 🐣</title>
+  <style>
+    body { margin:0; display:flex; height:100vh; font-family: Arial, sans-serif; transition: background 0.3s; }
+    body.dark { background:#222; color:white; }
+    .sidebar {
+      width:260px; background:#f9f9f9; border-right:1px solid #ddd;
+      padding:20px; text-align:center; overflow-y:auto;
+    }
+    body.dark .sidebar { background:#333; color:white; }
+    .sidebar img { width:80px; height:80px; border-radius:50%; }
+    .sidebar button {
+      width:100%; margin:5px 0; padding:10px;
+      border:none; border-radius:8px; background:#4CAF50;
+      color:white; cursor:pointer; font-weight:bold;
+    }
+    .sidebar select, .sidebar input[type=range], .sidebar input[type=color] {
+      width:90%; margin:8px 0;
+    }
+    .chat-container { flex:1; display:flex; flex-direction:column; }
+    .messages { flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; }
+    .message {
+      margin:10px 0; padding:12px 18px; border-radius:18px; max-width:70%;
+      word-wrap:break-word; font-size:15px;
+    }
+    .user { background: var(--user-bubble, #d1f3d1); align-self:flex-end; }
+    .assistant { background: #f0f0f0; align-self:flex-start; }
+    body.dark .assistant { background:#444; color:white; }
+    .input-area {
+      display:flex; border-top:1px solid #ddd; padding:10px; background:#fafafa;
+    }
+    body.dark .input-area { background:#333; }
+    .input-area input {
+      flex:1; padding:12px; font-size:16px; border:1px solid #ccc; border-radius:20px;
+    }
+    .input-area button {
+      margin-left:10px; padding:10px 20px; border:none; background:#4CAF50; color:white;
+      border-radius:20px; cursor:pointer; font-weight:bold;
+    }
+    #typing { padding:5px; font-style:italic; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Emoji_u1f614.svg/1024px-Emoji_u1f614.svg.png" alt="Poussin">
+    <h3>Assistant Poussin 🐣</h3>
+    <label>Modèle :</label><br>
+    <select id="model">
+      <option value="llama3:8b">Llama3 8B</option>
+      <option value="mixtral:7b">Mixtral 7B</option>
+    </select><br>
+    <label>Créativité :</label><br>
+    <input type="range" id="temp" min="0" max="1" step="0.1" value="0.7"><br>
+    <label>Couleur Bulle User :</label><br>
+    <input type="color" id="bubbleColor" value="#d1f3d1" onchange="changeBubbleColor()"><br>
+    <button onclick="toggleDark()">🌙 / ☀️</button>
+    <hr>
+    <button onclick="toggleMode()">Mode : <span id="modeLabel">IA</span></button>
+    <hr>
+    <button onclick="callModule('synthese')">Synthèse 📚</button>
+    <button onclick="callModule('incoherence')">Incohérence 🧐</button>
+    <button onclick="callModule('planificateur')">Planificateur 📅</button>
+    <button onclick="callModule('rapport')">Rapport 📈</button>
+    <button onclick="callModule('controle')">Contrôle 🔒</button>
+    <button onclick="callModule('style')">Changer Style 🎭</button>
+    <button onclick="callModule('humaniser')">Humaniser 🕵️‍♂️</button>
+    <hr>
+    <button onclick="callModule('joke')">Blague 😂</button>
+    <button onclick="callModule('story')">Histoire 📚</button>
+    <button onclick="callModule('quiz')">Quiz 🧠</button>
+    <button onclick="callModule('chaos')">Chaos 🌀</button>
+    <button onclick="callModule('confess')">Confession 😳</button>
+    <hr>
+    <button onclick="exportTXT()">Exporter TXT</button>
+    <button onclick="clearHistory()">🗑️ Effacer Chat</button>
+  </div>
 
-HTML = "<h1>Assistant Poussin 🐣</h1><p>(Ton HTML complet ici)</p>"
+  <div class="chat-container">
+    <div class="messages" id="messages"></div>
+    <div id="typing"></div>
+    <div class="input-area">
+      <input id="msg" placeholder="Parle à Poussin...">
+      <button onclick="sendText()">Envoyer</button>
+    </div>
+  </div>
+
+  <script>
+    // identique au tien : sendText, toggleMode, callModule etc.
+  </script>
+</body>
+</html>
+'''
 
 @app.route('/')
 def index():
@@ -34,7 +125,7 @@ def ask():
     response = ollama.chat(
         model=model,
         messages=[
-            {"role": "system", "content": "Tu es Poussin GPT 🐣, assistant structuré." if POUSSIN_STATE["mode"] == "IA" else "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️."},
+            {"role": "system", "content": "Tu es Poussin GPT 🐣" if POUSSIN_STATE["mode"] == "IA" else "Tu es Poussin ULTRA HUMAIN 🕵️‍♂️"},
             {"role": "user", "content": user_input}
         ],
         options={"temperature": temp},
@@ -64,21 +155,23 @@ def clear_history():
         json.dump([], f)
     return '', 204
 
-# ✅ MODULES internes
 @app.route('/module/<mod>')
 def module(mod):
-    if mod == "chaos":
-        reply = "Chaos total activé 🌀🤯 ! Prépare-toi !"
-    elif mod == "joke":
-        reply = "Pourquoi le poussin traverse la route ? Pour pondre un œuf de l'autre côté ! 😂"
-    elif mod == "story":
-        reply = "Il était une fois un poussin courageux qui pondait des idées... 🐣📚"
-    elif mod == "quiz":
-        reply = "Question Quiz : Combien de plumes a un poussin ? 🧠"
-    elif mod == "confess":
-        reply = "Je te confesse : Poussin adore tes questions ! 😳"
-    else:
-        reply = f"[Module {mod}] exécuté !"
+    modules = {
+        "synthese": "Voici la synthèse 📚",
+        "incoherence": "Incohérence vérifiée 🧐",
+        "planificateur": "Planificateur 📅 prêt",
+        "rapport": "Rapport 📈 généré",
+        "controle": "Contrôle 🔒 effectué",
+        "style": "Style changé 🎭",
+        "humaniser": "Réponse humanisée 🕵️‍♂️",
+        "joke": "Blague 😂 : Pourquoi le poussin traverse la route ?",
+        "story": "Il était une fois 📚",
+        "quiz": "Quiz 🧠 : devine !",
+        "chaos": "Chaos 🌀 activé !",
+        "confess": "Confession 😳 révélée."
+    }
+    reply = modules.get(mod, f"[Module {mod}] exécuté !")
     return jsonify({"reply": reply})
 
 def save_to_history(user, assistant):
