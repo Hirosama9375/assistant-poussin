@@ -1,2 +1,2 @@
-Flask
-ollama
+flask
+openai>=1.0
